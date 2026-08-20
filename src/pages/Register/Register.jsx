@@ -59,8 +59,10 @@ export default function Register() {
           form.name,
           form.email
         );
+        toast.success("Welcome email sent. Check your inbox!");
       } catch (err) {
-        console.error(err);
+        console.error("Welcome email failed:", err);
+        toast.error(`Account created, but the welcome email could not be sent: ${err.message}`);
       }
 
       toast.success("Welcome to StudyMate!");
