@@ -2,7 +2,11 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import { Resend } from "resend";
+import process from "node:process";
 
+// The client and server share the project-level environment file during local
+// development. A server/.env file, when present, can override these values.
+dotenv.config({ path: new URL("../.env", import.meta.url) });
 dotenv.config();
 
 const app = express();
@@ -10,6 +14,10 @@ const port = process.env.PORT || 5000;
 const resendApiKey = process.env.RESEND_API_KEY || process.env.VITE_RESEND_API_KEY;
 const resendFrom = process.env.RESEND_FROM_EMAIL || "StudyMate <onboarding@resend.dev>";
 const resend = resendApiKey ? new Resend(resendApiKey) : null;
+const groqApiKey = process.env.GROQ_API_KEY || process.env.VITE_GROQ_API_KEY;
+// gpt-oss-20b is available on the connected Groq account. Override this with
+// GROQ_MODEL in server/.env when you enable a different model.
+const groqModel = process.env.GROQ_MODEL || "openai/gpt-oss-20b";
 
 app.use(cors());
 app.use(express.json({ limit: "100kb" }));
@@ -40,6 +48,13 @@ function ensureEmailIsConfigured(req, res, next) {
   next();
 }
 
+function ensureGroqIsConfigured(_req, res, next) {
+  if (!groqApiKey) {
+    return res.status(500).json({ error: "AI service is not configured. Add GROQ_API_KEY to server/.env." });
+  }
+  next();
+}
+
 function emailLayout(content) {
   return `<!doctype html>
   <html><body style="margin:0;background:#f5f3ff;font-family:Arial,sans-serif;color:#1e1b4b">
@@ -61,7 +76,38 @@ async function sendEmail({ to, subject, html }) {
 }
 
 app.get("/health", (_req, res) => {
-  res.json({ emailConfigured: Boolean(resend), sender: resendFrom });
+  res.json({ emailConfigured: Boolean(resend), aiConfigured: Boolean(groqApiKey), sender: resendFrom });
+});
+
+app.post("/ai", ensureGroqIsConfigured, async (req, res) => {
+  const prompt = String(req.body?.prompt || "").trim();
+  if (!prompt) return res.status(400).json({ error: "A prompt is required." });
+  if (prompt.length > 50_000) return res.status(400).json({ error: "The study notes are too long. Please use 50,000 characters or fewer." });
+
+  try {
+    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${groqApiKey}`,
+      },
+      body: JSON.stringify({
+        model: groqModel,
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.5,
+      }),
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(payload?.error?.message || `Groq request failed (${response.status}).`);
+    }
+    const content = payload?.choices?.[0]?.message?.content;
+    if (!content) throw new Error("Groq returned an empty response.");
+    res.json({ content });
+  } catch (error) {
+    console.error("Groq request error:", error);
+    res.status(502).json({ error: error.message || "Unable to generate study material." });
+  }
 });
 
 app.post("/welcome", ensureEmailIsConfigured, async (req, res) => {

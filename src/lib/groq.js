@@ -1,31 +1,18 @@
-const API_URL = "https://api.groq.com/openai/v1/chat/completions";
-
-const API_KEY = import.meta.env.VITE_GROQ_API_KEY;
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 export async function askGroq(prompt) {
-  const response = await fetch(API_URL, {
+  const response = await fetch(`${API_URL}/ai`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${API_KEY}`,
     },
-    body: JSON.stringify({
-      model: "llama-3.3-70b-versatile",
-      messages: [
-        {
-          role: "user",
-          content: prompt,
-        },
-      ],
-      temperature: 0.5,
-    }),
+    body: JSON.stringify({ prompt }),
   });
 
+  const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error("Groq request failed");
+    throw new Error(data.error || `Groq request failed (${response.status}).`);
   }
 
-  const data = await response.json();
-
-  return data.choices[0].message.content;
+  return data.content;
 }
