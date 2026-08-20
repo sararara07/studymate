@@ -19,6 +19,20 @@ import { addQuiz } from "../../services/quizService";
 
 const imageTypes = ["image/png", "image/jpeg", "image/webp"];
 
+function parseAiJson(value, label) {
+  const cleaned = String(value)
+    .trim()
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/\s*```$/, "")
+    .trim();
+
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    throw new Error(`Groq returned an invalid ${label} response. Please try again.`);
+  }
+}
+
 export default function AIWorkspace() {
   const [notes, setNotes] = useState("");
   const [output, setOutput] = useState("");
@@ -79,21 +93,27 @@ export default function AIWorkspace() {
       if (type === "keypoints") setOutput(await generateKeyPoints(notes));
 
       if (type === "flashcards") {
-        const cards = JSON.parse(await generateFlashcards(notes));
+        const cards = parseAiJson(await generateFlashcards(notes), "flashcard");
+        if (!Array.isArray(cards) || !cards.every((card) => card?.question && card?.answer)) {
+          throw new Error("Groq returned incomplete flashcards. Please try again.");
+        }
         await Promise.all(cards.map((card) => addFlashcard("AI Generated", card.question, card.answer)));
         setOutput("Flashcards are ready in your Flashcards collection.");
         toast.success(`${cards.length} flashcards created.`);
       }
 
       if (type === "quiz") {
-        const quizzes = JSON.parse(await generateQuiz(notes));
+        const quizzes = parseAiJson(await generateQuiz(notes), "quiz");
+        if (!Array.isArray(quizzes) || !quizzes.every((quiz) => quiz?.question && Array.isArray(quiz.options) && quiz.options.length === 4 && quiz?.answer)) {
+          throw new Error("Groq returned an incomplete quiz. Please try again.");
+        }
         await Promise.all(quizzes.map((quiz) => addQuiz("AI Quiz", quiz.question, quiz.options, quiz.answer)));
         setOutput("Your quiz is ready in the Quiz section.");
         toast.success(`${quizzes.length} quiz questions created.`);
       }
     } catch (error) {
       console.error("AI generation failed:", error);
-      toast.error("Generation failed. Please try again.");
+      toast.error(error.message || "Generation failed. Please try again.");
     } finally {
       setLoading(false);
     }

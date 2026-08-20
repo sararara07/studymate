@@ -1,4 +1,6 @@
-const API = import.meta.env.VITE_API_URL || import.meta.env.VITE_EMAIL_API_URL || "http://localhost:5000";
+// Vite proxies this path to the local backend. Set VITE_API_URL to the deployed
+// backend URL in production.
+const API = import.meta.env.VITE_API_URL || import.meta.env.VITE_EMAIL_API_URL || "/api";
 
 async function postEmail(path, body, fallbackMessage) {
   let response;
