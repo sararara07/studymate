@@ -2,29 +2,33 @@ import * as pdfjsLib from "pdfjs-dist";
 import Tesseract from "tesseract.js";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc =
-  `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+  new URL("pdfjs-dist/build/pdf.worker.min.mjs", import.meta.url).toString();
 
 export async function readPDF(file) {
   const buffer = await file.arrayBuffer();
 
-  const pdf = await pdfjsLib.getDocument({
-    data: buffer,
-  }).promise;
+  const loadingTask = pdfjsLib.getDocument({ data: buffer });
+  const pdf = await loadingTask.promise;
 
-  let text = "";
+  try {
+    const pages = [];
 
-  for (let i = 1; i <= pdf.numPages; i++) {
-    const page = await pdf.getPage(i);
-
-    const content = await page.getTextContent();
-
-    text +=
-      content.items
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const content = await page.getTextContent();
+      const pageText = content.items
         .map((item) => item.str)
-        .join(" ") + "\n\n";
-  }
+        .join(" ")
+        .replace(/\s+/g, " ")
+        .trim();
 
-  return text;
+      if (pageText) pages.push(pageText);
+    }
+
+    return pages.join("\n\n");
+  } finally {
+    await pdf.destroy();
+  }
 }
 
 export async function readImage(file) {

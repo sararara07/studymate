@@ -7,7 +7,6 @@ import {
   BookOpenCheck,
   TrendingUp,
   Clock3,
-  BarChart3,
 } from "lucide-react";
 
 export default function DashboardPreview() {

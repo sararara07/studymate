@@ -12,10 +12,6 @@ import { getAnalytics } from "../../services/analyticsService";
 export default function Analytics() {
   const [stats, setStats] = useState(null);
 
-  useEffect(() => {
-    loadStats();
-  }, []);
-
   async function loadStats() {
     try {
       const data = await getAnalytics();
@@ -24,6 +20,10 @@ export default function Analytics() {
       console.error(err);
     }
   }
+
+  useEffect(() => {
+    loadStats();
+  }, []);
 
   if (!stats) {
     return (

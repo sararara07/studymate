@@ -13,7 +13,7 @@ async function postEmail(path, body, fallbackMessage) {
     });
   } catch (error) {
     if (error instanceof TypeError) {
-      throw new Error("Couldn't reach the email server. Run npm run dev and try again.");
+      throw new Error("Couldn't reach the email server. Run npm run dev and try again.", { cause: error });
     }
     throw error;
   }
