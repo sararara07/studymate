@@ -78,7 +78,8 @@ export default function AIWorkspace() {
       toast.success(pdfUpload ? "Text extracted from your PDF." : "Text extracted from your image.");
     } catch (error) {
       console.error("File reading failed:", error);
-      toast.error(pdfUpload ? "We couldn't read that PDF. Make sure its pages are clear and try again." : "We couldn't read that image. Try a clearer image.");
+      const message = error instanceof Error ? error.message : "Unknown error";
+      toast.error(pdfUpload ? `PDF upload failed: ${message}` : "We couldn't read that image. Try a clearer image.");
     } finally {
       setLoading(false);
     }

@@ -1,8 +1,8 @@
-import * as pdfjsLib from "pdfjs-dist";
+import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
 import Tesseract from "tesseract.js";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc =
-  new URL("pdfjs-dist/build/pdf.worker.min.mjs", import.meta.url).toString();
+  new URL("pdfjs-dist/legacy/build/pdf.worker.min.mjs", import.meta.url).toString();
 
 async function readScannedPdfPage(page) {
   const viewport = page.getViewport({ scale: 2 });
@@ -24,7 +24,10 @@ async function readScannedPdfPage(page) {
 export async function readPDF(file) {
   const buffer = await file.arrayBuffer();
 
-  const loadingTask = pdfjsLib.getDocument({ data: buffer });
+  const loadingTask = pdfjsLib.getDocument({
+    data: new Uint8Array(buffer),
+    useWorkerFetch: false,
+  });
   const pdf = await loadingTask.promise;
 
   try {
