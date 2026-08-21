@@ -56,7 +56,7 @@ export async function readPDF(file) {
 
     return scannedPages.join("\n\n");
   } finally {
-    await pdf.destroy();
+    await loadingTask.destroy();
   }
 }
 
